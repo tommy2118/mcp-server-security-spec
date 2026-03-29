@@ -1,8 +1,8 @@
-name: Weekly Spec Update
+name: Monthly Spec Update
 
 on:
   schedule:
-    - cron: "0 6 * * 0" # Every Sunday at 06:00 UTC
+    - cron: "0 6 1 * *" # 1st of every month at 06:00 UTC
   workflow_dispatch: # Manual trigger for testing
 
 permissions:
@@ -124,7 +124,7 @@ jobs:
             5. Push: `git push -u origin auto-update/YYYY-MM-DD`
             6. Create PR with `gh pr create` using this format:
 
-            Title: "Weekly spec update: [brief summary]"
+            Title: "Monthly spec update: [brief summary]"
             Body:
             ## Changes
             - [list each edit with source URL]
