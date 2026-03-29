@@ -58,10 +58,6 @@ If you're building a new MCP server, start with:
 3. Reference [SPEC.md Part II](SPEC.md) (Sections 3-5) as you implement each tool
 4. Review against the checklist before deployment
 
-## Reference Implementation
-
-The spec uses [ember-mcp](https://github.com/tommy2118) --- a Ruby MCP server with 71 tools bridging Claude Desktop to an LMS via GraphQL --- as the reference implementation throughout. Code examples and architectural patterns are drawn from ember-mcp.
-
 ## Status
 
 **Version 0.1.0 (Draft)** --- March 2026
