@@ -53,6 +53,9 @@ This matrix maps official MCP specification requirements to the MCP Server Secur
 | Dev credentials blocked in production | MCP Spec: Security | 7.2 | Compliant | Startup validation rejects API keys starting with `dev-` in production. |
 | Credentials MUST NOT be logged | MCP Spec: Security | 7.1, 7.5 | Compliant | No credential logging observed. Minimal logging currently. |
 | Credentials MUST NOT be in container images | MCP Spec: Security | 7.1 | Compliant | Credentials injected via environment variables at runtime. |
+| Token audience validation (MUST) | MCP Spec: Auth | 7.6.1 | Not Implemented (stdio) | Required for HTTP transport servers. Tokens must have `aud` claim matching server URI. |
+| Token passthrough prohibition (MUST NOT) | MCP Spec: Auth | 7.6.3 | Compliant | Thin adapters use own credentials to authenticate to backend. Client tokens are never forwarded. |
+| Resource indicators RFC 8707 | MCP Spec: Auth | 7.6.2 | N/A | Required for HTTP transport with OAuth. Not applicable to stdio transport with API key auth. |
 
 ---
 
@@ -83,6 +86,17 @@ This matrix maps official MCP specification requirements to the MCP Server Secur
 | Pin dependencies and scan for vulnerabilities | MCP Spec: Security | 11.3 | Partial | Lock file committed (pinning). No automated vulnerability scanning in CI. See Gap 7. |
 | Defend against ATPA (output-based injection) | MCP Spec: Security | 5.4 | Not Implemented | User-generated content flows back unsanitized. No prompt injection pattern scanning on outputs. See Gap 8. |
 | Enforce TLS certificate verification | MCP Spec: Security | 8.3 | Implemented | Default SSL verification. Certificate verification not disabled anywhere in codebase. |
+
+---
+
+## Primitives (Resources, Prompts, Elicitation, Sampling)
+
+| MCP Spec Requirement | Source | This Spec | Thin Adapter Status | Notes |
+|----------------------|--------|-----------|---------------------|-------|
+| Resource URI validation | MCP Spec: Resources | 16.1 | N/A | Required if server exposes resources. Validate scheme, syntax, and reject path traversal. |
+| Prompt input validation | MCP Spec: Prompts | 16.2 | N/A | Required if server exposes prompts. Sanitize dynamic arguments and audit for injection patterns. |
+| Elicitation: no sensitive data in form mode | MCP Spec: Elicitation | 16.3 | N/A | Required if server uses elicitation. Sensitive data collection must use URL mode, not form mode. |
+| Sampling: human-in-the-loop | MCP Spec: Sampling | 16.4 | N/A | Required if server uses sampling. Sampling requests must have iteration limits and user oversight. |
 
 ---
 

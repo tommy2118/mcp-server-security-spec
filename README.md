@@ -28,17 +28,17 @@ MCP servers sit between an LLM and backend systems with real authority. The LLM-
 ## Spec Structure
 
 ### Part I: Foundations
-1. **Threat Model and Security Context** --- the LLM-in-the-loop problem, 12-threat catalog, trust boundaries
+1. **Threat Model and Security Context** --- the LLM-in-the-loop problem, 16-threat catalog, trust boundaries
 2. **Architecture Principles** --- thin adapter pattern, stateless design, defense in depth
 
 ### Part II: Building Secure Tools
 3. **Input Validation and Sanitization** --- schema constraints, SSRF prevention, injection checklist
 4. **Tool Design** --- naming, description hygiene, annotations, rate limiting
-5. **Output Security** --- error sanitization, ATPA defense, response size limits
+5. **Output Security** --- error sanitization, ATPA defense, provenance labeling, response size limits
 
 ### Part III: Transport, Authentication, and Network
 6. **Transport Security** --- stdio model, HTTP model, transport isolation
-7. **Authentication and Authorization** --- deputy boundary, tool-level auth, confused deputy prevention
+7. **Authentication and Authorization** --- deputy boundary, tool-level auth, OAuth hardening, consent-cookie defense, token passthrough prohibition
 8. **Network Security** --- SSRF blocklists, outbound restrictions, TLS enforcement
 
 ### Part IV: Operational Security
@@ -48,6 +48,10 @@ MCP servers sit between an LLM and backend systems with real authority. The LLM-
 12. **Testing Requirements** --- security test categories, fuzzing, penetration checklist
 13. **Deployment Security** --- container hardening, network isolation, resource limits
 14. **Operational Procedures** --- incident response, key rotation, monitoring
+
+### Part V: Server Profiles and Extended Primitives
+15. **Server Profiles** --- thin adapter, HTTP/proxy, stateful auth, filesystem/CLI with applicability matrix
+16. **Resources, Prompts, and Elicitation** --- resource security, prompt hygiene, elicitation phishing, sampling controls
 
 ## Quick Start
 

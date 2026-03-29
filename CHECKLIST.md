@@ -10,7 +10,7 @@ Copy this checklist into your project's issue tracker or planning document at th
 
 ## Phase 1: Before Writing Code
 
-- [ ] Document the threat model (what backend does this server expose? which threats from T1-T12 apply?)
+- [ ] Document the threat model (what backend does this server expose? which threats from T1-T16 apply?)
 - [ ] Choose thin adapter or thick server (justify in writing if thick; see SPEC Section 2.1)
 - [ ] Choose transport: stdio or HTTP (see SPEC Section 6)
 - [ ] Define backend authentication mechanism (API key, OAuth, service account; see SPEC Section 7.2)
@@ -108,6 +108,40 @@ Copy this checklist into your project's issue tracker or planning document at th
 - [ ] Lock file committed (Gemfile.lock, package-lock.json, etc.; SPEC 11.3)
 - [ ] Dependency vulnerability scanning configured (bundle audit, npm audit, etc.; SPEC 11.3)
 - [ ] Transport isolation: one transport per server process (SPEC 6.3)
+
+---
+
+## Authorization Hardening (HTTP Transport)
+
+- [ ] Tokens are validated for audience (`aud` claim matches server URI) (7.6.1)
+- [ ] Resource indicators (RFC 8707) are included in token requests (7.6.2)
+- [ ] Client tokens are never forwarded to backend APIs (7.6.3)
+- [ ] Proxy servers implement per-client consent registry (7.6.4)
+- [ ] Consent cookies use __Host- prefix with Secure/HttpOnly/SameSite=Lax (7.6.4)
+- [ ] Third-party credentials do not transit through the MCP client (7.6.5)
+- [ ] User identity is verified for third-party auth flows (7.6.5)
+
+---
+
+## Resources, Prompts, and Elicitation
+
+- [ ] Resource URIs are validated (scheme, syntax, path traversal) (16.1)
+- [ ] File-scheme resources validate paths against configured roots (16.1)
+- [ ] Resource content from external sources has provenance labeling (16.1)
+- [ ] Prompt definitions follow description hygiene rules (16.2)
+- [ ] Dynamic prompt arguments are sanitized (16.2)
+- [ ] Sensitive data collection uses URL mode, not form mode (16.3)
+- [ ] Elicitation URLs are bound to specific user sessions (16.3)
+- [ ] Sampling requests have iteration limits (16.4)
+
+---
+
+## Server Profile
+
+- [ ] Server profile is identified (thin adapter / HTTP proxy / stateful auth / filesystem-CLI) (15.1-15.4)
+- [ ] Profile-specific requirements from Section 15.5 matrix are applied
+- [ ] Filesystem/CLI servers run in a sandbox (MUST) (15.4)
+- [ ] Stateful auth servers encrypt tokens at rest (15.3)
 
 ---
 
