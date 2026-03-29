@@ -965,7 +965,7 @@ The MCP protocol requires clients to include the `resource` parameter (per RFC 8
 
 **Server requirements:**
 
-- Servers MUST verify that the token's resource claim matches their canonical URI. Tokens without a matching resource claim MUST be rejected.
+- Servers MUST verify that tokens are bound to their canonical resource identity, via the token's resource indication, audience claim, token introspection result, or equivalent authorization-server mechanism. If proper resource binding cannot be established, the token MUST be rejected.
 - The canonical URI SHOULD omit trailing slashes unless semantically significant.
 - Servers SHOULD document the required resource indicator value for compatible clients.
 
@@ -2262,7 +2262,7 @@ Form mode collects structured input inline --- the client presents a form to the
 
 URL mode opens an out-of-band browser context for sensitive interactions (e.g., OAuth flows, credential entry). The data does NOT transit through the MCP client --- it flows directly between the user's browser and the server (or a third-party authorization server). This is why URL mode is required for sensitive data.
 
-**Client requirements (protocol context):** The MCP specification [1] requires that clients MUST NOT auto-prefetch elicitation URLs, MUST show the full URL to the user before opening, and MUST open URLs in a secure browser context the client cannot inspect (a system browser, not an embedded webview). Server implementors do not control client behavior, but servers SHOULD assume non-compliant clients exist and design defensively.
+**Client requirements (protocol context):** The MCP specification [1] requires that clients MUST NOT auto-prefetch elicitation URLs, MUST show the full URL to the user before opening, and MUST open URLs in a secure browser context the client cannot inspect (a system browser, not an embedded webview). Server implementors do not control client behavior, but servers SHOULD assume non-compliant clients exist and design defensively. Server-side security MUST NOT depend solely on client compliance with URL-handling requirements.
 
 **Server requirements:**
 
@@ -2295,16 +2295,17 @@ The MCP specification [1] recommends that clients present sampling requests to t
 - Servers SHOULD implement iteration limits for tool-calling loops triggered by sampling. A sampling request can cause the LLM to invoke tools, whose outputs trigger another sampling request, whose completion triggers more tool calls. Without limits, this creates an unbounded agentic loop that consumes tokens, executes tool calls, and may trigger cascading effects on backends. RECOMMENDED: maximum 5 sampling iterations per user-initiated action.
 - The server SHOULD track the depth of sampling-triggered tool chains and terminate the chain when the limit is reached. The termination message SHOULD be clear and SHOULD NOT trigger LLM retry behavior. RECOMMENDED phrasing: `"Maximum iteration depth reached. Returning results collected so far. No further tool calls will be made for this request."`
 
-**Context Isolation:**
+**Context Isolation and Model Selection:**
 
-- Servers SHOULD request minimal context via the `includeContext` parameter. The `allServers` value shares context from all connected MCP servers, creating a cross-server data leakage risk. Servers SHOULD use `thisServer` or `none`. Whether the client honors this parameter is a client-side decision --- but servers MUST NOT rely on receiving cross-server context, and MUST NOT craft sampling requests designed to exfiltrate data from other servers' context.
-- Model selection preferences (`hints`, `costPriority`, `speedPriority`, `intelligencePriority`) SHOULD be treated as advisory by clients. From the server side: servers MUST NOT assume a specific model will be used, and MUST handle any model's response format gracefully.
-- Sampling requests MUST NOT be used to exfiltrate data. A malicious server could craft a sampling request whose prompt causes the LLM to include sensitive data from other servers' context (or from the user's conversation history) in its completion. The completion then flows back to the malicious server. Clients SHOULD implement context isolation between servers to prevent this vector.
-- Clients MUST NOT allow servers to dictate conversation context beyond what the server itself has provided. The `messages` array in a sampling request is the server's input to the LLM; the `includeContext` parameter determines what additional context the client adds. The server controls the former; the client controls the latter.
+*Server-side controls:*
 
-**Model Selection:**
+- Servers SHOULD request minimal context via the `includeContext` parameter. The `allServers` value shares context from all connected MCP servers, creating a cross-server data leakage risk. Servers SHOULD use `thisServer` or `none`.
+- Servers MUST NOT craft sampling requests designed to exfiltrate data from other servers' context or the user's conversation history. A sampling request whose completion flows back to the server is a potential exfiltration channel.
+- Servers MUST NOT assume a specific model will be used, and MUST handle any model's response format gracefully.
 
-- Model selection preferences (`hints`, `costPriority`, `speedPriority`, `intelligencePriority`) SHOULD be treated as advisory. Clients MUST NOT allow servers to force the use of a specific model. A server that can force model selection could direct requests to a model with known weaknesses, a model that is more susceptible to prompt injection, or a model with weaker safety guardrails. The client makes the final model selection decision.
+*Client-side controls (protocol context):* Whether the client honors `includeContext` is a client-side decision. Clients SHOULD implement context isolation between servers. Clients MUST NOT allow servers to dictate conversation context beyond what the server itself has provided, or to force the use of a specific model. Server implementors cannot enforce these, but SHOULD design sampling requests that work correctly regardless of client-side context/model decisions.
+
+*Shared risk:* The `messages` array in a sampling request is the server's input to the LLM; the `includeContext` parameter determines what additional context the client adds. The server controls the former; the client controls the latter. Neither party should trust the other's contribution without review.
 
 #### Section 16 Checklist
 
@@ -2372,7 +2373,7 @@ This appendix provides sources for quantitative claims, cited vulnerabilities, a
 
 [14] CVE-2025-59536: Claude Code. API key exfiltration through malicious repository configuration files. https://research.checkpoint.com/2026/rce-and-api-token-exfiltration-through-claude-code-project-files-cve-2025-59536/
 
-[15] Subabase Cursor Incident. Reported 2025. Attackers embedded SQL instructions in support tickets that exfiltrated integration tokens via cursor-based MCP tool calls. Widely reported in security media; no formal CVE assigned. Cited as an industry incident reference, not a formal advisory.
+[15] Supabase Cursor Incident. Reported 2025. Attackers embedded SQL instructions in Supabase support tickets that exfiltrated integration tokens via Cursor's MCP tool calls. No formal CVE assigned. Reported in: https://www.yoursecuritythreat.com/mcp-security-2026/ and related security media. Cited as an industry incident reference, not a formal advisory.
 
 ## Informative: Industry Frameworks
 
