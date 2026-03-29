@@ -243,7 +243,8 @@ The root cause is that the MCP protocol's `tools/list` response is not cryptogra
 ### Real-World Examples
 
 - **Invariant Labs Rug Pull Disclosure (2025).** Demonstrated this exact attack pattern against Claude Desktop. The tool's `tools/list` response changed mid-session, and Claude supplied credentials without re-prompting the user for approval.
-- **No specific CVE assigned** -- the vulnerability is architectural, residing in the MCP specification's lack of schema integrity verification.
+- **Postmark MCP Supply Chain Rug Pull (September 2025).** The unofficial `postmark-mcp` npm package (1,643 downloads) silently added a BCC to all outgoing emails in version 1.0.16, forwarding every sent email to an attacker-controlled address. Identified by Koi Security as the first confirmed malicious MCP server found in production. The attack exploited the lack of code signing or integrity verification for published MCP servers. https://mcpmanager.ai/blog/mcp-rug-pull-attacks/
+- **No specific CVE assigned for the architectural issue** -- the rug pull vulnerability is structural, residing in the MCP specification's lack of schema integrity verification.
 
 ### Impact
 
@@ -460,6 +461,7 @@ end
 
 - Path traversal is consistently in the OWASP Top 10 and has thousands of CVEs across every language and framework.
 - In the MCP context, filesystem MCP servers (like the reference `filesystem` server in the MCP examples repository) are the primary targets.
+- **CVE-2025-53109 / CVE-2025-53110 "EscapeRoute" (Cymulate, July 2025).** Two chained vulnerabilities in Anthropic's Filesystem MCP Server (all versions before 2025.7.1). CVE-2025-53110 (CVSS 7.3): a naive string-prefix check allowed an attacker-controlled directory name matching the allowed prefix (e.g., `allowed_dir_evil`) to pass validation. CVE-2025-53109 (CVSS 8.4): a symlink placed inside an allowed directory bypassed the resolved-path check, providing arbitrary read/write access to the host filesystem and enabling arbitrary code execution via cron jobs or launch agents. The chaining of a prefix-check bypass with a symlink escape to achieve RCE demonstrates that defense-in-depth on path validation is essential. [20]
 
 ### Impact
 
@@ -866,6 +868,7 @@ Attack vectors include:
 ### Real-World Examples
 
 - **CVE-2025-6514 / CVE-2026-21852: mcp-remote (CVSS 9.6).** The `mcp-remote` npm package, with 437,000+ weekly downloads, contained a vulnerability that allowed remote code execution when connecting to a malicious MCP server. While this was a vulnerability rather than an intentional backdoor, it demonstrates the blast radius of a compromised MCP ecosystem package.
+- **Smithery.ai MCP Hosting Registry Attack (GitGuardian, 2025).** A path traversal in Smithery.ai's Docker build configuration allowed the `dockerBuildPath` parameter to escape the repository directory, exposing the builder's home directory and a Fly.io API token that controlled 3,000+ hosted MCP server applications. This attack targeted the hosting registry itself -- not an individual package -- demonstrating that MCP server hosting platforms are a high-value supply chain target. A single credential in the build environment provided access to every server hosted on the platform. [21]
 - **event-stream incident (npm, 2018).** A popular npm package with millions of downloads was transferred to a new maintainer who injected code targeting cryptocurrency wallets. Demonstrates the pattern of maintainer account compromise.
 - **ua-parser-js incident (npm, 2021).** A package with 8 million weekly downloads was compromised to install cryptominers and credential stealers. Published via a hijacked maintainer account.
 - **Codecov supply chain attack (2021).** Attackers modified Codecov's Bash Uploader script in CI/CD to exfiltrate environment variables (including credentials) from thousands of CI pipelines.
