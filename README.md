@@ -23,7 +23,6 @@ MCP servers sit between an LLM and backend systems with real authority. The LLM-
 | [**SPEC.md**](SPEC.md) | The full specification --- 14 sections across 4 parts, each ending with an actionable checklist |
 | [**THREAT_MODEL.md**](THREAT_MODEL.md) | 12 threats with STRIDE/CWE classification, attack scenarios, real CVEs, and mitigations |
 | [**CHECKLIST.md**](CHECKLIST.md) | Single-page build checklist --- copy this when starting a new MCP server |
-| [**EMBER_GAP_ANALYSIS.md**](EMBER_GAP_ANALYSIS.md) | Gap analysis of ember-mcp (the reference implementation) against the spec |
 | [**COMPLIANCE_MATRIX.md**](COMPLIANCE_MATRIX.md) | Official MCP spec requirements mapped to this spec's sections |
 
 ## Spec Structure

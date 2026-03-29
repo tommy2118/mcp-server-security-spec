@@ -153,7 +153,7 @@ ember-mcp's architecture implicitly addresses several threats from the catalog a
 
 **URL validation mitigates T5 (SSRF).** Where tools accept URL-like inputs, ember-mcp validates them against an allowlist before passing them to the backend.
 
-These mitigations are not accidental. They follow from deliberate architectural choices documented in Section 2. However, ember-mcp still has gaps to address. See `EMBER_GAP_ANALYSIS.md` for the detailed gap analysis and remediation plan.
+These mitigations are not accidental. They follow from deliberate architectural choices documented in Section 2. However, ember-mcp still has gaps to address --- see the gap analysis in the ember-mcp repository for the detailed remediation plan.
 
 #### Section 1 Checklist
 
@@ -916,7 +916,7 @@ Tool-level authorization answers "can this client call this tool?" Resource-leve
 
 **Practical guidance:**
 
-The Ember LMS GraphQL API is the authorization authority for all Ember data. Today, ember-mcp authenticates with a single API key that has broad access. This is a known gap (see `EMBER_GAP_ANALYSIS.md`). The remediation path:
+The Ember LMS GraphQL API is the authorization authority for all Ember data. Today, ember-mcp authenticates with a single API key that has broad access. This is a known gap (see the ember-mcp gap analysis). The remediation path:
 
 1. **Current state:** Single `X-Api-Key` with server-wide permissions. All tool calls execute with the same authority regardless of which user initiated the request via Claude.
 2. **Target state:** The MCP server passes end-user identity to the Ember LMS API via a dedicated header (e.g., `X-User-Id` or a signed JWT in an `Authorization` header). The Ember API uses this identity to enforce per-user access control. The MCP server's own API key authenticates the *server*; the user identity header authorizes the *request*.
