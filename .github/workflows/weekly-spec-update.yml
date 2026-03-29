@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  id-token: write
 
 jobs:
   update-spec:
@@ -24,9 +25,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          model: claude-sonnet-4-6
-          max_turns: "40"
-          allowed_tools: "Read,Edit,Write,WebSearch,WebFetch,Bash(git *),Bash(gh pr *),Bash(gh auth *),Bash(date *)"
+          claude_args: '--model claude-sonnet-4-6 --max-turns 40 --allowedTools "Read,Edit,Write,WebSearch,WebFetch,Bash(git *),Bash(gh pr *),Bash(gh auth *),Bash(date *)"'
           prompt: |
             You are maintaining the MCP Server Security Specification. Your job is to
             research recent MCP security developments and update the spec documents
