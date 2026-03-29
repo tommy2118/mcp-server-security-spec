@@ -963,11 +963,12 @@ MCP resources (URIs that return content) and prompts (reusable prompt templates)
 
 | Mitigation | SPEC.md Reference |
 |---|---|
-| Sanitize resource content before returning it to the LLM (strip HTML comments, hidden text, instruction-like patterns) | Section 16.1 |
-| Apply provenance labeling to resource content so the LLM can distinguish trusted from untrusted sources | Section 5.4 |
-| Implement access controls on resources to limit who can modify resource content | Section 16.1 |
+| Label resource content with provenance metadata so downstream consumers can distinguish trusted from untrusted sources | Section 5.4 |
+| Use structured data formats with labeled fields for resource content, reducing injection surface | Section 5.2, 5.4 |
+| Implement access controls on resources to limit who can modify resource content (content governance) | Section 16.1 |
 | Validate prompt templates for injection patterns before exposing them | Section 16.2 |
 | Prefer static prompt definitions authored by server developers over dynamically sourced templates | Section 16.2 |
+| As a supplementary control, strip HTML comments, hidden text, and instruction-like patterns from resource content (heuristic, not primary defense) | Section 16.1, 5.4 |
 
 ### Thin Adapter Status
 
@@ -983,9 +984,11 @@ MCP resources (URIs that return content) and prompts (reusable prompt templates)
 
 ### Description
 
-Consent racing occurs when tool, prompt, or resource definitions silently change between user approval and actual invocation. This is related to Threat 3 (Rug Pull) but specifically targets the timing window between when a user reviews and approves a tool and when the LLM actually invokes it.
+Consent racing exploits the desynchronization between a user's approval state and the server's actual definition state. While Threat 3 (Rug Pull) addresses definition integrity drift across the tool lifecycle — definitions changing over time — consent racing specifically targets the approval timing window: the gap between when a user grants consent and when that consent is exercised.
 
-The MCP specification does not require clients to re-verify tool definitions before each invocation. Once a user approves a tool based on its description and schema, the client caches that approval and uses it for subsequent calls. If the server changes the tool's implementation (or even its schema) during this window, the user's consent is stale.
+The distinction matters because the defenses differ. Rug pulls are mitigated by change detection and re-approval workflows. Consent racing is mitigated by reducing the window between approval and execution, binding consent to specific definition versions, and re-verifying definitions at invocation time.
+
+The MCP specification does not require clients to re-verify tool definitions before each invocation. Once a user approves a tool based on its description and schema, the client caches that approval and uses it for subsequent calls. If the server changes the tool's implementation (or even its schema) during this window, the user's consent is stale — it was granted for a definition that no longer matches the executing code.
 
 ### Attack Scenario
 
@@ -1059,7 +1062,10 @@ This is a social engineering attack that exploits the disconnect between two app
 
 | Mitigation | SPEC.md Reference |
 |---|---|
-| Request the minimum OAuth scopes necessary for the advertised tools | Section 7.6 |
+| Requested OAuth scopes MUST be documented and mapped to exposed tools/capabilities | Section 7.6, 15.2 |
+| Destructive or admin scopes MUST correspond to explicitly exposed destructive/admin tool capabilities | Section 7.6 |
+| Scope-to-capability mismatch SHOULD fail security review | Section 12 |
+| Request the minimum OAuth scopes necessary for the advertised tools (scope minimization) | Section 7.6 |
 | Clients should display scope analysis to users, comparing requested scopes to tool descriptions | Client-side responsibility |
 | Authorization servers should warn on unusually broad scope requests | Authorization server responsibility |
 | Implement token audience validation so tokens are bound to the specific MCP server | Section 7.6.1 |
