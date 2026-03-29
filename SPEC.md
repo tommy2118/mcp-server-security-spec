@@ -2382,3 +2382,9 @@ This appendix provides sources for quantitative claims, cited vulnerabilities, a
 [17] Coalition for Secure AI (CoSAI). Securing the AI Agent Revolution: A Practical Guide to MCP Security. https://www.coalitionforsecureai.org/securing-the-ai-agent-revolution-a-practical-guide-to-mcp-security/
 
 [18] MCP Threat Modeling Research. arXiv:2603.22489. Identified 57 threats across 5 MCP components using STRIDE/DREAD methodology.
+
+[19] OWASP Top 10 for Agentic Applications 2026. Open Worldwide Application Security Project GenAI Security Project. December 2025. https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+
+[20] CVE-2025-53109 / CVE-2025-53110: Anthropic Filesystem MCP Server ("EscapeRoute"). CVSS 8.4 / 7.3. Path validation bypass and symlink escape allowing arbitrary read/write on the host filesystem. Disclosed by Cymulate Research Labs, July 2025. https://cymulate.com/blog/cve-2025-53109-53110-escaperoute-anthropic/ / https://nvd.nist.gov/vuln/detail/CVE-2025-53109
+
+[21] GitGuardian. Breaking into MCP Server Hosting: Path Traversal in Smithery.ai. 2025. Demonstrated that a path traversal in Smithery.ai's Docker build configuration (`dockerBuildPath`) could expose builder credentials controlling 3,000+ hosted MCP server applications. https://blog.gitguardian.com/breaking-mcp-server-hosting/
