@@ -113,6 +113,7 @@ Copy this checklist into your project's issue tracker or planning document at th
 
 ## Authorization Hardening (HTTP Transport)
 
+- [ ] Each HTTP client connection uses a separate server and transport instance (not a shared instance across connections) (6.2)
 - [ ] Tokens are validated for audience (`aud` claim matches server URI) (7.6.1)
 - [ ] Resource indicators (RFC 8707) are included in token requests (7.6.2)
 - [ ] Client tokens are never forwarded to backend APIs (7.6.3)

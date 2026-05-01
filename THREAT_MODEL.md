@@ -462,6 +462,7 @@ end
 - Path traversal is consistently in the OWASP Top 10 and has thousands of CVEs across every language and framework.
 - In the MCP context, filesystem MCP servers (like the reference `filesystem` server in the MCP examples repository) are the primary targets.
 - **CVE-2025-53109 / CVE-2025-53110 "EscapeRoute" (Cymulate, July 2025).** Two chained vulnerabilities in Anthropic's Filesystem MCP Server (all versions before 2025.7.1). CVE-2025-53110 (CVSS 7.3): a naive string-prefix check allowed an attacker-controlled directory name matching the allowed prefix (e.g., `allowed_dir_evil`) to pass validation. CVE-2025-53109 (CVSS 8.4): a symlink placed inside an allowed directory bypassed the resolved-path check, providing arbitrary read/write access to the host filesystem and enabling arbitrary code execution via cron jobs or launch agents. The chaining of a prefix-check bypass with a symlink escape to achieve RCE demonstrates that defense-in-depth on path validation is essential. [20]
+- **CVE-2025-68143 / CVE-2025-68145: Anthropic mcp-server-git (January 2026).** Two path traversal vulnerabilities in the official Anthropic Git MCP server, exploitable via prompt injection. CVE-2025-68143 (CVSS 8.8): the `git_init` tool accepted arbitrary filesystem paths without validation, allowing an attacker to create a git repository in sensitive directories such as `~/.ssh/`. CVE-2025-68145 (CVSS 7.1): missing path validation on the `--repository` flag allowed directory traversal. Both vulnerabilities were triggered by prompt injection via a malicious README or GitHub issue, demonstrating a real-world chain of T1/T2 (prompt injection) into T6 (path traversal). [23]
 
 ### Impact
 
@@ -536,6 +537,7 @@ end
 ### Real-World Examples
 
 - **CVE-2025-6514 / CVE-2026-21852: mcp-remote (CVSS 9.6).** RCE via a malicious MCP server that exploited insufficient input sanitization in the mcp-remote proxy. Affected 437,000+ npm downloads. The malicious server returned tool definitions that, when processed by mcp-remote, resulted in arbitrary code execution on the client machine.
+- **CVE-2025-68144: Anthropic mcp-server-git -- Argument Injection (January 2026).** The `git_diff` and `git_checkout` tools in the official Anthropic Git MCP server passed user-controlled arguments directly to the git CLI without sanitization. An attacker crafted a malicious repository description containing prompt injection instructions that caused the agent to invoke these tools with attacker-chosen arguments, achieving arbitrary git command execution. CVSS 8.1. This is a real-world example of the T1/T2 (prompt injection) → T7 (argument injection) chain. Patched in version 2025.12.18. [23]
 
 ### Impact
 
@@ -803,6 +805,7 @@ The MCP specification's HTTP transport (Streamable HTTP, and the deprecated HTTP
 
 - Session hijacking is a well-established attack class with decades of CVEs across web applications.
 - The MCP specification's HTTP transport design received specific criticism from security researchers for placing session IDs in URLs, which the web security community moved away from in the early 2000s.
+- **CVE-2026-25536: MCP TypeScript SDK cross-client data leak (February 2026).** A race condition in stateless HTTP deployments of the official `@modelcontextprotocol/sdk` (versions 1.10.0–1.25.3) caused responses to be misrouted to the wrong client when a single `McpServer`/`StreamableHTTPServerTransport` instance was shared across concurrent connections. One authenticated user's tool responses were silently delivered to a different authenticated user. CVSS 7.1 (CWE-362). While not a classic session hijacking attack (no credential theft is required), the result is equivalent: one client receives data intended for another. Fixed in version 1.26.0 by requiring a new transport instance per connection. [22]
 
 ### Impact
 

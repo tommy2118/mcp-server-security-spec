@@ -757,6 +757,11 @@ This subsection defines requirements for MCP servers that use HTTP-based transpo
 - The server SHOULD implement session expiration. RECOMMENDED: 30 minutes of idle timeout (no requests received). Expired sessions MUST be rejected with a `404 Not Found` response, prompting the client to reinitialize.
 - Session state MUST NOT contain cached credentials or authorization decisions (per Section 2.2). Session state, if any, SHOULD be limited to transport-level bookkeeping (message sequence numbers, SSE stream cursors).
 
+**Per-connection server isolation:**
+
+- The server MUST use a separate server and transport instance for each HTTP client connection. Sharing a single server instance across concurrent connections creates a race condition where responses can be misrouted to the wrong client, exposing one user's data to another. CVE-2026-25536 demonstrated this in the official MCP TypeScript SDK when a stateless deployment reused a single `McpServer` across multiple connections [22].
+- Stateless HTTP deployments MUST create a new transport handler for each incoming request rather than routing multiple requests through one shared instance.
+
 ### 6.3 Transport Isolation
 
 A server instance MUST support exactly one transport at a time. A single process MUST NOT expose both stdio and HTTP transport simultaneously.
@@ -789,6 +794,7 @@ server.run(transports: [stdio_transport, http_transport])  # Violates isolation
 - [ ] Session IDs are generated with a cryptographically secure RNG (6.2)
 - [ ] Session IDs contain only visible ASCII characters (0x21-0x7E) (6.2)
 - [ ] Session expiration is configured (recommended: 30 minutes idle timeout) (6.2)
+- [ ] Each HTTP client connection uses a separate server and transport instance, not a shared instance (6.2)
 - [ ] Each server process exposes exactly one transport (6.3)
 
 ---
@@ -2388,3 +2394,7 @@ This appendix provides sources for quantitative claims, cited vulnerabilities, a
 [20] CVE-2025-53109 / CVE-2025-53110: Anthropic Filesystem MCP Server ("EscapeRoute"). CVSS 8.4 / 7.3. Path validation bypass and symlink escape allowing arbitrary read/write on the host filesystem. Disclosed by Cymulate Research Labs, July 2025. https://cymulate.com/blog/cve-2025-53109-53110-escaperoute-anthropic/ / https://nvd.nist.gov/vuln/detail/CVE-2025-53109
 
 [21] GitGuardian. Breaking into MCP Server Hosting: Path Traversal in Smithery.ai. 2025. Demonstrated that a path traversal in Smithery.ai's Docker build configuration (`dockerBuildPath`) could expose builder credentials controlling 3,000+ hosted MCP server applications. https://blog.gitguardian.com/breaking-mcp-server-hosting/
+
+[22] CVE-2026-25536: `@modelcontextprotocol/sdk` (MCP TypeScript SDK) cross-client data leak. CVSS 7.1. A race condition in stateless HTTP deployments that reuse a single `McpServer`/`StreamableHTTPServerTransport` instance across multiple connections causes responses to be misrouted between authenticated clients, exposing one user's data to another. Affected versions 1.10.0–1.25.3; fixed in 1.26.0. https://nvd.nist.gov/vuln/detail/CVE-2026-25536
+
+[23] CVE-2025-68143 / CVE-2025-68144 / CVE-2025-68145: Anthropic `mcp-server-git`. Three vulnerabilities enabling file read/write and code execution via prompt injection into the official Anthropic Git MCP server. CVE-2025-68143 (CVSS 8.8): path traversal in `git_init` accepting unvalidated filesystem paths. CVE-2025-68144 (CVSS 8.1): argument injection in `git_diff`/`git_checkout` passing unsanitized arguments to the git CLI. CVE-2025-68145 (CVSS 7.1): path traversal via the `--repository` flag. Patched in versions 2025.9.25 (68143) and 2025.12.18 (68144, 68145). https://nvd.nist.gov/vuln/detail/CVE-2025-68143
