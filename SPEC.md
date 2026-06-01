@@ -776,6 +776,10 @@ server.run(transport: MCP::Server::Transports::StreamableHttpTransport.new)
 server.run(transports: [stdio_transport, http_transport])  # Violates isolation
 ```
 
+**SDK Instance Isolation (HTTP Transport):**
+
+For HTTP transport, a single SDK server instance MUST NOT be shared across multiple concurrent client connections. CVE-2026-25536 [23] demonstrated that reusing one `McpServer` instance across connections creates race conditions in which tool results, resource content, and error messages are routed to unintended recipients in multi-tenant deployments. For HTTP transport, each client connection MUST be handled by a dedicated server instance or a fully stateless per-request handler that retains no cross-request state.
+
 #### Section 6 Checklist
 
 - [ ] Stdio servers read from stdin and write to stdout exclusively for MCP protocol traffic (6.1)
@@ -790,6 +794,7 @@ server.run(transports: [stdio_transport, http_transport])  # Violates isolation
 - [ ] Session IDs contain only visible ASCII characters (0x21-0x7E) (6.2)
 - [ ] Session expiration is configured (recommended: 30 minutes idle timeout) (6.2)
 - [ ] Each server process exposes exactly one transport (6.3)
+- [ ] HTTP transport: each client connection is handled by a dedicated server instance, not a shared instance (6.3)
 
 ---
 
@@ -2388,3 +2393,13 @@ This appendix provides sources for quantitative claims, cited vulnerabilities, a
 [20] CVE-2025-53109 / CVE-2025-53110: Anthropic Filesystem MCP Server ("EscapeRoute"). CVSS 8.4 / 7.3. Path validation bypass and symlink escape allowing arbitrary read/write on the host filesystem. Disclosed by Cymulate Research Labs, July 2025. https://cymulate.com/blog/cve-2025-53109-53110-escaperoute-anthropic/ / https://nvd.nist.gov/vuln/detail/CVE-2025-53109
 
 [21] GitGuardian. Breaking into MCP Server Hosting: Path Traversal in Smithery.ai. 2025. Demonstrated that a path traversal in Smithery.ai's Docker build configuration (`dockerBuildPath`) could expose builder credentials controlling 3,000+ hosted MCP server applications. https://blog.gitguardian.com/breaking-mcp-server-hosting/
+
+[22] CVE-2025-68143 / CVE-2025-68144 / CVE-2025-68145: modelcontextprotocol/servers (mcp-server-git). LF Projects. Path traversal (CWE-22, CVSS 9.1 and 8.8) and argument injection (CWE-88, CVSS 7.1) in the official MCP git reference server. Fixed in version 2025.12.17. https://nvd.nist.gov/vuln/detail/CVE-2025-68143
+
+[23] CVE-2026-25536: @modelcontextprotocol/sdk. Cross-client data leak (CWE-362, CVSS 7.1) when a single `McpServer` instance is reused across multiple concurrent HTTP connections in `StreamableHTTPServerTransport`. Fixed in SDK v1.26.0. https://nvd.nist.gov/vuln/detail/CVE-2026-25536
+
+[24] CVE-2025-53967: Framelink Figma MCP Server. Command injection (CWE-78, CVSS 8.0) via unsanitized user input in the `fetchWithRetry()` curl fallback. Fixed in v0.6.3. https://nvd.nist.gov/vuln/detail/CVE-2025-53967
+
+[25] Li, X. and Gao, X. "A First Look at the Security Issues in the Model Context Protocol Ecosystem." Accepted at DSN 2026. arXiv:2510.16558, April 2026. Analysis of 67,057 MCP servers across six registries; 833 servers with exploitable code flaws; 212 servers vulnerable to maintainer account hijacking. https://arxiv.org/abs/2510.16558
+
+[26] OX Security. "The Mother of All AI Supply Chains: Critical Systemic Vulnerability at the Core of the MCP." April 15, 2026. STDIO configuration injection enabling RCE via unsanitized server command fields; 10 downstream CVEs across 150M+ downloads. https://www.ox.security/blog/the-mother-of-all-ai-supply-chains-critical-systemic-vulnerability-at-the-core-of-the-mcp/
