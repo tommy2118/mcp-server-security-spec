@@ -745,6 +745,8 @@ Two variants apply to MCP:
 - The confused deputy problem is a foundational security concept (originally described by Norm Hardy in 1988).
 - In cloud environments, confused deputy attacks are common against services that use shared credentials (e.g., AWS cross-account access without external ID conditions).
 - **Unit 42 (Palo Alto Networks) MCP Research (2025).** Specifically identified the confused deputy pattern as a high-risk vulnerability in MCP servers that use service-level credentials to access backend resources on behalf of individual users.
+- **Asana MCP Tenant Isolation Flaw (2025).** A tenant isolation vulnerability in Asana's MCP integration was capable of affecting up to 1,000 enterprises, allowing cross-tenant data access through the shared MCP server credential. Documented in the CoSAI MCP Security Taxonomy [22].
+- **WordPress MCP Plugin Privilege Escalation (2025).** Privilege escalation vulnerabilities in WordPress plugins exposing MCP endpoints affected 100,000+ sites. Documented in the CoSAI MCP Security Taxonomy [22].
 
 ### Impact
 
