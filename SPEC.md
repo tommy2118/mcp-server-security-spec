@@ -78,7 +78,7 @@ The following threats are specific to or amplified by the MCP architecture. DREA
 | T8 | **Code Injection** | Tool input parameters are interpreted as code via `eval()`, `instance_eval`, `send()`, ERB templates, or similar dynamic execution mechanisms. | Arbitrary code execution within the server process. | -- | 67% of implementations surveyed use sensitive dynamic-evaluation APIs [11]. CWE-94. In Ruby servers, particular attention is needed for `send`, `public_send`, `instance_eval`, `class_eval`, and string interpolation into `system`/backtick calls. |
 | T9 | **Denial of Wallet** | LLM retry behavior on errors generates unbounded tool calls, consuming paid API resources (backend API calls, LLM tokens, cloud compute). | Financial damage via runaway API consumption. Token amplification up to 142.4x documented [7] (one user message produces 142.4x the expected token spend). | -- | Unique to the LLM-in-the-loop architecture. Traditional APIs have deterministic retry logic with backoff. LLMs retry based on reasoning, which may escalate (trying harder) rather than back off. A single malformed error response can trigger a retry storm. |
 | T10 | **Confused Deputy** | The MCP server's backend credentials are exercised via crafted tool calls that are syntactically valid but semantically unauthorized. The LLM generates the call; the server trusts the LLM; the backend trusts the server. | Unauthorized operations on the backend performed with the server's legitimate credentials. | -- | The MCP server is a textbook confused deputy. It holds credentials the LLM does not have, and it executes operations the LLM requests. If the LLM is manipulated (T1, T2), the server becomes the attacker's proxy to the backend. |
-| T11 | **Session Hijacking (HTTP transport)** | Predictable or leaked session identifiers in HTTP-based MCP transport (SSE, Streamable HTTP) enable an attacker to take over an active session. | Full impersonation of the legitimate client. Attacker can invoke tools, read responses, and inject messages. | -- | Applies only to HTTP-based transports (SSE, Streamable HTTP), not stdio. Session IDs in MCP are typically passed as URL parameters or headers. If generated with insufficient entropy or transmitted without TLS, they are trivially interceptable. |
+| T11 | **Session Hijacking (HTTP transport)** | Predictable or leaked session identifiers in HTTP-based MCP transport (SSE, Streamable HTTP) enable an attacker to take over an active session. | Full impersonation of the legitimate client. Attacker can invoke tools, read responses, and inject messages. | -- | Applies only to HTTP-based transports (SSE, Streamable HTTP), not stdio. Session IDs in MCP are typically passed as URL parameters or headers. If generated with insufficient entropy or transmitted without TLS, they are trivially interceptable. CVE-2026-33032 ("MCPwn", CVSS 9.8) is the first MCP-specific CVE at critical severity and resulted from a missing authentication middleware on an MCP HTTP endpoint [25]. MCP specification 2026-07-28 [23] removes the stateful `Mcp-Session-Id` handshake in favor of a stateless per-request model, changing session architecture but not eliminating HTTP authentication requirements. |
 | T12 | **Supply Chain** | Compromised MCP SDK, server dependency, or upstream package injects malicious code into the server. | Full compromise of the server process, including access to backend credentials and all tool functionality. | -- | CVE-2025-6514 in `mcp-remote` affected 437,000+ downloads [13]. MCP servers depend on SDK libraries that are relatively new and rapidly evolving, increasing supply chain risk. The attack surface includes the MCP SDK itself, transport libraries, and any backend client libraries. |
 
 ### 1.3 Trust Boundaries
@@ -757,6 +757,8 @@ This subsection defines requirements for MCP servers that use HTTP-based transpo
 - The server SHOULD implement session expiration. RECOMMENDED: 30 minutes of idle timeout (no requests received). Expired sessions MUST be rejected with a `404 Not Found` response, prompting the client to reinitialize.
 - Session state MUST NOT contain cached credentials or authorization decisions (per Section 2.2). Session state, if any, SHOULD be limited to transport-level bookkeeping (message sequence numbers, SSE stream cursors).
 
+**Transport deprecation note.** The legacy HTTP+SSE transport (HTTP with Server-Sent Events, predating Streamable HTTP) is officially deprecated in MCP specification version 2026-07-28 [23], with a 12-month migration deadline (approximately July 2027). Servers using legacy SSE transport SHOULD migrate to Streamable HTTP. The 2026-07-28 specification also removes the stateful `Mcp-Session-Id` handshake — each request becomes self-describing via inline metadata. Implementations targeting the 2026-07-28 protocol SHOULD consult that specification for revised session management semantics; the session ID requirements above reflect the 2025-11-25 baseline.
+
 ### 6.3 Transport Isolation
 
 A server instance MUST support exactly one transport at a time. A single process MUST NOT expose both stdio and HTTP transport simultaneously.
@@ -834,6 +836,8 @@ logger.debug("Using API key: #{api_key[0..3]}...")  # Also wrong --- partial cre
 - The server MUST return `403 Forbidden` for requests with valid authentication but insufficient permissions.
 - The server SHOULD NOT return different error messages for "invalid token" vs. "expired token" vs. "malformed token." Distinguishing these cases helps an attacker enumerate valid token formats. A single `401` with a generic message is sufficient.
 - The server SHOULD support token rotation and enforce token expiration. RECOMMENDED: access tokens expire within 1 hour; refresh tokens expire within 24 hours.
+
+**Authentication adoption gap.** An empirical measurement study of real-world remote MCP servers found that only 8.5% implement OAuth; 53% rely on static API keys; and 24–25% have no authentication at all, with 492 servers exposed to the internet without any authentication mechanism [26]. These statistics underscore the criticality of the authentication requirements in this section.
 
 ### 7.2 Backend Authentication (the Deputy Boundary)
 
@@ -993,6 +997,8 @@ This subsection is more detailed than most of this spec because the attack is su
 
 This applies to MCP servers that act as proxies to third-party authorization servers. If your server implements dynamic client registration (RFC 7591 [6]) and proxies authorization requests to a third-party AS, this subsection applies directly. If your server does not proxy auth, skip to 7.6.5.
 
+**Note on Dynamic Client Registration (DCR) deprecation.** MCP specification version 2026-07-28 [23] formally deprecates Dynamic Client Registration (RFC 7591 [6]) in favor of Client ID Metadata Documents (CIMD), which establish client trust via domain-hosted metadata rather than runtime registration. Implementations using DCR SHOULD plan migration to CIMD. DCR remains functional for backward compatibility but will be removed in a future MCP specification version.
+
 **Attack preconditions.** All four conditions must be true for this attack to succeed:
 
 1. The proxy uses a static `client_id` with the third-party authorization server.
@@ -1036,6 +1042,16 @@ For OAuth-based servers, the relationship between requested OAuth scopes and exp
 - Scope-to-capability mismatches SHOULD fail security review (Section 12). If a server requests write scopes, it MUST expose tools that justify those scopes.
 - Servers SHOULD request the minimum scopes necessary for their advertised tools (scope minimization). Start with read-only scopes and elevate incrementally via OAuth `WWW-Authenticate` challenges if the user invokes a tool that requires broader access.
 
+**7.6.7 RFC 9207 Issuer Validation**
+
+MCP specification version 2026-07-28 [23] requires authorization servers to include the `iss` (issuer) parameter in authorization responses, and requires clients to validate the `iss` parameter before redeeming an authorization code. This closes authorization-server mix-up attacks, where an attacker intercepts an authorization code intended for one authorization server and submits it to a different server that the attacker controls.
+
+- The MCP server's associated authorization server MUST include the `iss` parameter in all authorization responses, per RFC 9207.
+- MCP clients MUST validate that the `iss` parameter in the authorization response matches the expected authorization server's issuer URI before proceeding with code exchange. If the `iss` parameter is absent or does not match, the authorization code MUST be rejected.
+- Server operators MUST configure their authorization server to return `iss` in authorization responses when targeting the 2026-07-28 or later MCP specification.
+
+This requirement applies to HTTP transport servers using OAuth. Stdio servers using API keys for backend authentication are not affected.
+
 #### Section 7 Checklist
 
 - [ ] Stdio transport: credentials are passed via environment variables (7.1)
@@ -1070,6 +1086,7 @@ For OAuth-based servers, the relationship between requested OAuth scopes and exp
 - [ ] OAuth scopes are documented and mapped to specific tool capabilities (7.6.6)
 - [ ] Destructive/admin scopes correspond to explicitly exposed destructive/admin tools (7.6.6)
 - [ ] No scope-to-capability mismatches exist (7.6.6)
+- [ ] HTTP transport: authorization server returns `iss` parameter and client validates it before code redemption (RFC 9207, per 2026-07-28 MCP spec) (7.6.7)
 
 ---
 
@@ -2390,3 +2407,11 @@ This appendix provides sources for quantitative claims, cited vulnerabilities, a
 [21] GitGuardian. Breaking into MCP Server Hosting: Path Traversal in Smithery.ai. 2025. Demonstrated that a path traversal in Smithery.ai's Docker build configuration (`dockerBuildPath`) could expose builder credentials controlling 3,000+ hosted MCP server applications. https://blog.gitguardian.com/breaking-mcp-server-hosting/
 
 [22] Coalition for Secure AI (CoSAI) / OASIS Workstream 4. MCP Security Taxonomy: Secure Design Patterns for Agentic Systems. Approved January 8, 2026; published January 27, 2026. Comprehensive classification of ~40 threats across 12 categories covering all-local, single-tenant, and multi-tenant MCP deployments, with contributors including Google, IBM, Microsoft, Meta, NVIDIA, PayPal, and Zscaler. https://github.com/cosai-oasis/ws4-secure-design-agentic-systems/blob/main/model-context-protocol-security.md
+
+[23] Model Context Protocol Specification, Version 2026-07-28. The Linux Foundation. Key changes from 2025-11-25: stateless protocol (Mcp-Session-Id session handshake removed; per-request self-describing metadata); RFC 9207 issuer validation required for authorization servers; HTTP+SSE transport officially deprecated with 12-month migration deadline; Client ID Metadata Documents (CIMD) formally replace Dynamic Client Registration (DCR). https://modelcontextprotocol.io/specification/2026-07-28/
+
+[24] NSA Artificial Intelligence Security Center. Cybersecurity Information Sheet: "Model Context Protocol (MCP): Security Design Considerations for AI-Driven Automation." June 2, 2026. Identifies structural MCP security risks including inverted client-server trust, arbitrary-code-execution exposure, access control, prompt handling, tool execution, agent permissions, auditability, and governance of third-party integrations. https://media.defense.gov/2026/Jun/02/2003943289/-1/-1/0/CSI_MCP_SECURITY.PDF
+
+[25] CVE-2026-33032 ("MCPwn"): nginx-ui authentication bypass. CVSS 9.8 (Critical). CWE-306 (Missing Authentication for Critical Function). The `/mcp_message` endpoint was missing the `AuthRequired()` middleware applied to `/mcp`, and an empty default IP allowlist was treated as "allow all," enabling unauthenticated remote access to full nginx configuration management. Actively exploited in the wild. Disclosed April 2026 by Pluto Security; patched in nginx-ui 2.3.4. https://www.picussecurity.com/resource/blog/cve-2026-33032-mcpwn-how-a-missing-middleware-call-in-nginx-ui-hands-attackers-full-web-server-takeover
+
+[26] arXiv:2605.22333. A First Measurement Study on Authentication Security in Real-World Remote MCP Servers. 2026. Empirical analysis of real-world remote MCP server deployments: only 8.5% implement OAuth; 53% rely on static API keys; 24–25% have no authentication at all; 492 servers exposed to the internet without any authentication mechanism. https://arxiv.org/pdf/2605.22333

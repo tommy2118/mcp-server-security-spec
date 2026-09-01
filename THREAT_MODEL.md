@@ -792,6 +792,9 @@ The MCP specification's HTTP transport (Streamable HTTP, and the deprecated HTTP
 1. **Session IDs in URLs.** Some MCP client/server implementations pass session IDs as URL query parameters, making them visible in server logs, proxy logs, browser history, and Referer headers.
 2. **Predictable session IDs.** Implementations that generate session IDs using sequential counters, timestamps, or weak random number generators.
 3. **Missing session binding.** Sessions not bound to a specific client IP, TLS session, or other client fingerprint.
+4. **Missing authentication middleware.** HTTP MCP endpoints that lack authentication enforcement entirely — as demonstrated by CVE-2026-33032 [25], where a missing middleware call on an MCP HTTP endpoint allowed unauthenticated remote takeover.
+
+MCP specification version 2026-07-28 [23] transitions to a stateless protocol model that removes the `Mcp-Session-Id` session handshake — each request becomes self-describing via inline metadata rather than tied to a persistent session identifier. This changes session architecture but does not eliminate HTTP authentication and transport security requirements.
 
 ### Attack Scenario
 
@@ -803,6 +806,7 @@ The MCP specification's HTTP transport (Streamable HTTP, and the deprecated HTTP
 
 ### Real-World Examples
 
+- **CVE-2026-33032 ("MCPwn", April 2026, CVSS 9.8, CWE-306).** A critical authentication bypass in nginx-ui's MCP integration: the `/mcp_message` endpoint was missing the `AuthRequired()` middleware that protected the `/mcp` endpoint, and an empty default IP allowlist was treated as "allow all." Any unauthenticated remote attacker could read and write nginx configurations, inject malicious proxy rules, restart nginx, and exfiltrate configuration data. The vulnerability was exploited in the wild before public disclosure. Fixed in nginx-ui 2.3.4. This is the first publicly tracked MCP-specific CVE at CVSS 9.8 critical severity and a concrete demonstration that missing a single authentication middleware call on an MCP HTTP endpoint is sufficient for full remote compromise. [25]
 - Session hijacking is a well-established attack class with decades of CVEs across web applications.
 - The MCP specification's HTTP transport design received specific criticism from security researchers for placing session IDs in URLs, which the web security community moved away from in the early 2000s.
 
@@ -816,6 +820,7 @@ The MCP specification's HTTP transport (Streamable HTTP, and the deprecated HTTP
 
 | Mitigation | SPEC.md Reference |
 |---|---|
+| Apply authentication middleware to ALL MCP HTTP endpoints without exception; never rely on path-based allowlists as the sole control | Section 7.1 |
 | Use session IDs in headers (e.g., `Mcp-Session-Id`), never in URLs | Section 3.4 |
 | Generate session IDs using cryptographically secure random number generators (e.g., `SecureRandom.uuid`) | Section 3.4 |
 | Bind sessions to client identity (IP, TLS client certificate, or OAuth token) | Section 3.4 |
